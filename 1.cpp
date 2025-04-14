@@ -6,6 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <thread> 
 using namespace std;
 class Threadpool
 {
@@ -17,8 +18,9 @@ class Threadpool
         for(int i = 0;i < p_num;i++)
         {
             pthread_t thread;
-     pthread_create(&thread, nullptr, &Threadpool::workerFunction, this);
-     workers.push_back(thread);
+     //pthread_create(&thread, nullptr, &Threadpool::workerFunction, this);
+     //workers.push_back(thread);
+     workers.emplace_back(&Threadpool::workerFunction, this);
         }
     }
     ~Threadpool()
@@ -28,9 +30,10 @@ class Threadpool
         stop = true;
         condition.notify_all();
         }
-        for(pthread_t &worker : workers)
+        for(std::thread &worker : workers)
         {
-            pthread_join(worker,nullptr);
+            worker.join();
+            //pthread_join(worker,nullptr);
         }
     }
 
@@ -87,7 +90,7 @@ class Threadpool
 
     }
     private:
-vector<pthread_t> workers; // 工作线程
+vector<thread> workers; // 工作线程
 queue<function<void()>> taskQueue; // 任务队列
 mutex queueMutex; // 保护任务队列的互斥锁
 condition_variable condition; // 条件变量，用于线程同步
