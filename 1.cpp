@@ -12,15 +12,12 @@ class Threadpool
 {
     public:
     static mutex printMutex; 
-    //pthread_t thread[p_num];
     Threadpool(size_t p_num):stop(false),pendingTasks(0)
     {
         for(int i = 0;i < p_num;i++)
         {
             pthread_t thread;
-     //pthread_create(&thread, nullptr, &Threadpool::workerFunction, this);
-     //workers.push_back(thread);
-     workers.emplace_back(&Threadpool::workerFunction, this);
+            workers.emplace_back(&Threadpool::workerFunction, this);
         }
     }
     ~Threadpool()
@@ -60,33 +57,33 @@ class Threadpool
 }
 
     private:
-    static void* workerFunction(void* arg)
+    void workerFunction()
     {
-        Threadpool* pool = static_cast<Threadpool*>(arg);
+        //Threadpool* pool = static_cast<Threadpool*>(arg);
         while(true)
         {
             function<void()> task;
             {
-             unique_lock<mutex> lock(pool->queueMutex);
-             pool->condition.wait(lock, [pool] {
-                return pool->stop || !pool->taskQueue.empty();
+             unique_lock<mutex> lock(queueMutex);
+             condition.wait(lock, [this] {
+                return stop || !taskQueue.empty();
                 });
                 
-                if (pool->stop && pool->taskQueue.empty())
-                return nullptr;
+                if (stop && taskQueue.empty())
+                return;
                 
-                task = move(pool->taskQueue.front());
-                pool->taskQueue.pop();
+                task = move(taskQueue.front());
+                taskQueue.pop();
 
             }
             task();
-            --pool->pendingTasks;
-            if (pool->pendingTasks == 0 && pool->taskQueue.empty())
+            --pendingTasks;
+            if (pendingTasks == 0 && taskQueue.empty())
             {
-                pool->condition.notify_all();
+                condition.notify_all();
             }
         }
-        return nullptr;
+        //return;
 
     }
     private:
