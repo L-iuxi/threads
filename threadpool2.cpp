@@ -7,6 +7,8 @@
 #include <condition_variable>
 #include <atomic>
 #include <thread> 
+#include <curl/curl.h>
+
 using namespace std;
 class DownLoad{
     public:
@@ -49,7 +51,7 @@ class DownLoad{
 
     private:
     std::string url;
-    std::string save_path;
+    std::string savepath;
 
     static size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
         size_t written = fwrite(ptr, size, nmemb, stream);
@@ -59,12 +61,12 @@ class DownLoad{
 class Threadpool
 {
     public:
-    static mutex printMutex; 
+    //static mutex printMutex; 
     Threadpool(size_t p_num):stop(false),pendingTasks(0)
     {
         for(int i = 0;i < p_num;i++)
         {
-            pthread_t thread;
+            //pthread_t thread;
             workers.emplace_back(&Threadpool::workerFunction, this);
         }
     }
@@ -145,21 +147,11 @@ atomic<int> pendingTasks; // 记录未完成的任务数量
 
 };
 mutex Threadpool::printMutex;
-// void jiecheng(int start,int &result)
-// {
-//     result = 1;
-//     for(int i = 1;i <= start;i++)
-//     {
-//         result = i * result;
-//     }
-// }
-// void printTask(int i) {
-//     lock_guard<mutex> lock(Threadpool::printMutex);
-//     //cout << "Task " << id << " is being executed by thread " << pthread_self() << endl;
-//     int result;
-//     // jiecheng(i,result);
-//     // cout << i << "的阶乘为" << result << endl;
-//     // }
+
+void downloadTask(int id, const string& url, const string& savepath) {
+    DownLoad downloader(url, savepath);
+    downloader.execute();
+}
     int main()
     {
         int p_num = 11;
@@ -167,9 +159,10 @@ mutex Threadpool::printMutex;
     
         for (int i = 1; i < p_num; i++)
         {
-            pool.enqueue([i] {
-                printTask(i);
-            });
+            pool.enqueue([i,downloadTasks])
+            {
+                 downloadTask(i, downloadTasks[i].first, downloadTasks[i].second);
+            }
         }
     
         pool.wait();
